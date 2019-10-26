@@ -1,5 +1,6 @@
 import tensorflow as tf
-from tensorflow.contrib.keras.python.keras.layers import *
+# from tensorflow.contrib.keras.python.keras.layers import *
+from keras.layers import *
 
 
 def Conv3DWithBN(x, filters, ksize, strides, name, padding='same', dilation_rate=1, center=True, scale=True, decay=0.99):

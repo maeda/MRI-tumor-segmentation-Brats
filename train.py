@@ -1,9 +1,13 @@
 import numpy as np
+from keras.backend import learning_phase
+from keras.layers import concatenate, Conv3D
+
 import tf_models
 from sklearn.preprocessing import scale
-import tensorflow as tf
-from tensorflow.contrib.keras.python.keras.backend import learning_phase
-from tensorflow.contrib.keras.python.keras.layers import concatenate, Conv3D
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+# from tensorflow.contrib.keras.python.keras.backend import learning_phase
+# from tensorflow.contrib.keras.python.keras.layers import concatenate, Conv3D
 from nibabel import load as load_nii
 import os
 import argparse
@@ -174,7 +178,7 @@ def train():
     with open('train.txt') as f:
         for line in f:
             files.append(line[:-1])
-    print '%d training samples' % len(files)
+    print('%d training samples' % len(files))
 
     flair_t2_node = tf.placeholder(dtype=tf.float32, shape=(None, HSIZE, WSIZE, CSIZE, 2))
     t1_t1ce_node = tf.placeholder(dtype=tf.float32, shape=(None, HSIZE, WSIZE, CSIZE, 2))
@@ -194,7 +198,7 @@ def train():
         flair_t2_15, flair_t2_27 = tf_models.BraTS2ScaleDenseNetConcat(input=flair_t2_node, name='flair')
         t1_t1ce_15, t1_t1ce_27 = tf_models.BraTS2ScaleDenseNetConcat(input=t1_t1ce_node, name='t1')
     else:
-        print' No such model name '
+        print(' No such model name ')
 
     t1_t1ce_15 = concatenate([t1_t1ce_15, flair_t2_15])
     t1_t1ce_27 = concatenate([t1_t1ce_27, flair_t2_27])
@@ -231,7 +235,7 @@ def train():
         for ei in range(NUM_EPOCHS):
             for pi in range(len(files)):
                 acc_pi, loss_pi = [], []
-                data, labels, centers = data_gen_train.next()
+                data, labels, centers = data_gen_train.__next__()
                 n_batches = int(np.ceil(float(centers.shape[1]) / BATCH_SIZE))
                 for nb in range(n_batches):
                     offset_batch = min(nb * BATCH_SIZE, centers.shape[1] - BATCH_SIZE)
@@ -246,13 +250,13 @@ def train():
                     acc_pi.append([acc_ft, acc_t1c])
                     loss_pi.append(l)
                     n_pos_sum = np.sum(np.reshape(label_batch[0], (-1, 2)), axis=0)
-                    print 'epoch-patient: %d, %d, iter: %d-%d, p%%: %.4f, loss: %.4f, acc_flair_t2: %.2f%%, acc_t1_t1ce: %.2f%%' % \
+                    print('epoch-patient: %d, %d, iter: %d-%d, p%%: %.4f, loss: %.4f, acc_flair_t2: %.2f%%, acc_t1_t1ce: %.2f%%') % \
                           (ei + 1, pi + 1, nb + 1, n_batches, n_pos_sum[1]/float(np.sum(n_pos_sum)), l, acc_ft, acc_t1c)
 
-                print 'patient loss: %.4f, patient acc: %.4f' % (np.mean(loss_pi), np.mean(acc_pi))
+                print('patient loss: %.4f, patient acc: %.4f' % (np.mean(loss_pi), np.mean(acc_pi)))
 
             saver.save(sess, SAVE_PATH, global_step=ei)
-            print 'model saved'
+            print('model saved')
 
 
 if __name__ == '__main__':

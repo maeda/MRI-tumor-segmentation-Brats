@@ -2,6 +2,9 @@ import numpy as np
 import keras
 import argparse
 import os
+
+from keras.backend import learning_phase
+
 import tf_models
 import tensorflow as tf
 from keras.models import Sequential, Model
@@ -12,7 +15,7 @@ from keras.layers.pooling import AveragePooling3D
 from keras.layers import Input
 from keras.layers.merge import concatenate
 from keras.layers.normalization import BatchNormalization
-from tensorflow.contrib.keras.python.keras.backend import learning_phase
+# from tensorflow.contrib.keras.python.keras.backend import learning_phase
 
 from nibabel import load as load_nii
 from sklearn.preprocessing import scale
@@ -244,7 +247,7 @@ def main():
         t1_t1ce_15, t1_t1ce_27 = tf_models.BraTS2ScaleDenseNetConcat(input=t1_t1ce_node, name='t1')
 
     else:
-        print' No such model name '
+        print(' No such model name ')
 
     t1_t1ce_15 = concatenate([t1_t1ce_15, flair_t2_15])
     t1_t1ce_27 = concatenate([t1_t1ce_27, flair_t2_27])
@@ -262,7 +265,7 @@ def main():
     with tf.Session() as sess:
         saver.restore(sess, SAVE_PATH)
         for i in range(len(test_files)):
-            print 'predicting %s' % test_files[i]
+            print('predicting %s' % test_files[i])
             x, x_n, y = data_gen_test.next()
             pred = np.zeros([240, 240, 155, 5])
             for hi in range(batches_h):
@@ -288,7 +291,7 @@ def main():
 
             pred = np.argmax(pred, axis=-1)
             pred = pred.astype(int)
-            print 'calculating dice...'
+            print('calculating dice...')
             whole_pred = (pred > 0).astype(int)
             whole_gt = (y > 0).astype(int)
             core_pred = (pred == 1).astype(int) + (pred == 4).astype(int)
@@ -301,25 +304,25 @@ def main():
             dice_whole.append(dice_whole_batch)
             dice_core.append(dice_core_batch)
             dice_et.append(dice_et_batch)
-            print dice_whole_batch
-            print dice_core_batch
-            print dice_et_batch
+            print(dice_whole_batch)
+            print(dice_core_batch)
+            print(dice_et_batch)
 
         dice_whole = np.array(dice_whole)
         dice_core = np.array(dice_core)
         dice_et = np.array(dice_et)
 
-        print 'mean dice whole:'
-        print np.mean(dice_whole, axis=0)
-        print 'mean dice core:'
-        print np.mean(dice_core, axis=0)
-        print 'mean dice enhance:'
-        print np.mean(dice_et, axis=0)
+        print('mean dice whole:')
+        print(np.mean(dice_whole, axis=0))
+        print('mean dice core:')
+        print(np.mean(dice_core, axis=0))
+        print('mean dice enhance:')
+        print(np.mean(dice_et, axis=0))
 
         np.save(model_name + '_dice_whole', dice_whole)
         np.save(model_name + '_dice_core', dice_core)
         np.save(model_name + '_dice_enhance', dice_et)
-        print 'pred saved'
+        print('pred saved')
 
 
 if __name__ == '__main__':
