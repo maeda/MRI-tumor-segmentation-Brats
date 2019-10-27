@@ -1,3 +1,5 @@
+import glob
+
 import numpy as np
 from keras.backend import learning_phase
 from keras.layers import concatenate, Conv3D
@@ -8,7 +10,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 # from tensorflow.contrib.keras.python.keras.backend import learning_phase
 # from tensorflow.contrib.keras.python.keras.layers import concatenate, Conv3D
-from nibabel import load as load_nii
+from medpy.io import load as load_nii
 import os
 import argparse
 import keras
@@ -17,7 +19,7 @@ import keras
 def parse_inputs():
 
     parser = argparse.ArgumentParser(description='train the model')
-    parser.add_argument('-r', '--root-path', dest='root_path', default='/media/lele/Data/spie/Brats17TrainingData/HGG')
+    parser.add_argument('-r', '--root-path', dest='root_path', default='/Users/amaeda/Documents/workspace_maeda/MRI-tumor-segmentation-Brats/data/BRATS2015_Training/HGG')
     parser.add_argument('-sp', '--save-path', dest='save_path', default='dense24_correction')
     parser.add_argument('-lp', '--load-path', dest='load_path', default='dense24_correction')
     parser.add_argument('-ow', '--offset-width', dest='offset_w', type=int, default=12)
@@ -57,12 +59,12 @@ def get_patches_3d(data, labels, centers, hsize, wsize, csize, psize, preprocess
     offset_p = (hsize - psize) / 2
     for i in range(len(centers[0])):
         h, w, c = centers[0, i], centers[1, i], centers[2, i]
-        h_beg = min(max(0, h - hsize / 2), 240 - hsize)
-        w_beg = min(max(0, w - wsize / 2), 240 - wsize)
-        c_beg = min(max(0, c - csize / 2), 155 - csize)
-        ph_beg = h_beg + offset_p
-        pw_beg = w_beg + offset_p
-        pc_beg = c_beg + offset_p
+        h_beg = int(min(max(0, h - hsize / 2), 240 - hsize))
+        w_beg = int(min(max(0, w - wsize / 2), 240 - wsize))
+        c_beg = int(min(max(0, c - csize / 2), 155 - csize))
+        ph_beg = int(h_beg + offset_p)
+        pw_beg = int(w_beg + offset_p)
+        pc_beg = int(c_beg + offset_p)
         vox = data[h_beg:h_beg + hsize, w_beg:w_beg + wsize, c_beg:c_beg + csize, :]
         vox_labels = labels[ph_beg:ph_beg + psize, pw_beg:pw_beg + psize, pc_beg:pc_beg + psize]
         patches_x.append(vox)
@@ -120,6 +122,10 @@ def dice_coef_np(y_true, y_pred, num_classes):
 
 def vox_generator(all_files, n_pos, n_neg,correction= False):
     path = options['root_path']
+
+    def get_filename(prefix):
+        return glob.glob(os.path.join(path, file, prefix))[0].split('/')[-1]
+
     while 1:
         for file in all_files:
             if correction:
@@ -128,15 +134,14 @@ def vox_generator(all_files, n_pos, n_neg,correction= False):
                 t1 = load_nii(os.path.join(path, file, file + '_t1_corrected.nii.gz')).get_data()
                 t1ce = load_nii(os.path.join(path, file, file + '_t1ce_corrected.nii.gz')).get_data()
             else:
-
-                flair = load_nii(os.path.join(path, file, file + '_flair.nii.gz')).get_data()
-                t2 = load_nii(os.path.join(path, file, file + '_t2.nii.gz')).get_data()
-                t1 = load_nii(os.path.join(path, file, file + '_t1.nii.gz')).get_data()
-                t1ce = load_nii(os.path.join(path, file, file + '_t1ce.nii.gz')).get_data()
+                flair = load_nii(os.path.join(path, file, get_filename('VSD.Brain.XX.O.MR_Flair*'), get_filename('VSD.Brain.XX.O.MR_Flair*') + '.mha'))[0]
+                t2 = load_nii(os.path.join(path, file, get_filename('VSD.Brain.XX.O.MR_T2*'), get_filename('VSD.Brain.XX.O.MR_T2*') + '.mha'))[0]
+                t1 = load_nii(os.path.join(path, file, get_filename('VSD.Brain.XX.O.MR_T1.*'), get_filename('VSD.Brain.XX.O.MR_T1.*') + '.mha'))[0]
+                t1ce = load_nii(os.path.join(path, file, get_filename('VSD.Brain.XX.O.MR_T1c*'), get_filename('VSD.Brain.XX.O.MR_T1c*') + '.mha'))[0]
 
             data_norm = np.array([norm(flair), norm(t2), norm(t1), norm(t1ce)])
             data_norm = np.transpose(data_norm, axes=[1, 2, 3, 0])
-            labels = load_nii(os.path.join(path, file, file+'_seg.nii.gz')).get_data()
+            labels = load_nii(os.path.join(path, file, get_filename('VSD.Brain_3more.XX.O.OT.54517'), get_filename('VSD.Brain_3more.XX.O.OT.*')+'.mha'))[0]
 
             foreground = np.array(np.where(labels > 0))
             background = np.array(np.where((labels == 0) & (flair > 0)))
@@ -250,8 +255,7 @@ def train():
                     acc_pi.append([acc_ft, acc_t1c])
                     loss_pi.append(l)
                     n_pos_sum = np.sum(np.reshape(label_batch[0], (-1, 2)), axis=0)
-                    print('epoch-patient: %d, %d, iter: %d-%d, p%%: %.4f, loss: %.4f, acc_flair_t2: %.2f%%, acc_t1_t1ce: %.2f%%') % \
-                          (ei + 1, pi + 1, nb + 1, n_batches, n_pos_sum[1]/float(np.sum(n_pos_sum)), l, acc_ft, acc_t1c)
+                    print(f"epoch-patient: {ei + 1}, {pi + 1}, iter: {nb + 1}-{n_batches}, p%%: {n_pos_sum[1]/float(np.sum(n_pos_sum))}, loss: {l}, acc_flair_t2: {acc_ft}, acc_t1_t1ce: {acc_t1c}")
 
                 print('patient loss: %.4f, patient acc: %.4f' % (np.mean(loss_pi), np.mean(acc_pi)))
 
