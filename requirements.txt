@@ -1,0 +1,6 @@
+tensorflow-gpu==1.14
+keras
+sklearn
+nibabel
+tensorboardX
+tqdm
