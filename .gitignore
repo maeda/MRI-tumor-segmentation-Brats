@@ -2,3 +2,6 @@
 __pycache__/
 data/
 .DS_Store
+MICCAI_BraTS_2019_Data_Training/
+runs/
+.vscode/
