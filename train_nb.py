@@ -15,7 +15,7 @@ Original file is located at
 
 # from google.colab import drive
 # drive.mount('/content/drive')
-brats2019_path = "./MICCAI_BraTS_2019_Data_Training/"
+brats2019_path = "./MICCAI_BraTS_2019_Data_Training"
 
 # Commented out IPython magic to ensure Python compatibility.
 # %tensorflow_version 1.x
@@ -1013,7 +1013,7 @@ def parse_inputs():
         "-r",
         "--root-path",
         dest="root_path",
-        default="./MICCAI_BraTS_2019_Data_Training/HGG",
+        default=brats2019_path + "/HGG/"
     )
     parser.add_argument(
         "-sp", "--save-path", dest="save_path", default="dense24_correction"
@@ -1030,7 +1030,7 @@ def parse_inputs():
     parser.add_argument("-hs", "--height-size", dest="hsize", type=int, default=38)
     parser.add_argument("-cs", "--channel-size", dest="csize", type=int, default=38)
     parser.add_argument("-ps", "--pred-size", dest="psize", type=int, default=12)
-    parser.add_argument("-bs", "--batch-size", dest="batch_size", type=int, default=16)
+    parser.add_argument("-bs", "--batch-size", dest="batch_size", type=int, default=4)
     parser.add_argument("-e", "--num-epochs", dest="num_epochs", type=int, default=5)
     parser.add_argument(
         "-c", "--continue-training", dest="continue_training", type=bool, default=False
@@ -1046,25 +1046,6 @@ def parse_inputs():
 
 
 options = parse_inputs()
-
-
-options = {}
-options["root_path"] = brats2019_path + "/HGG/"
-options["save_path"] = "dense24_correction"
-options["load_path"] = "dense24_correction"
-options["offset_w"] = 12
-options["offset_h"] = 12
-options["offset_c"] = 12
-options["wsize"] = 38
-options["hsize"] = 38
-options["csize"] = 38
-options["psize"] = 12
-options["batch_size"] = 2
-options["num_epochs"] = 2  # 5
-options["continue_training"] = False
-options["model_name"] = "dense24"
-options["correction"] = False
-options["gpu_id"] = "0"
 
 os.environ["CUDA_VISIBLE_DEVICES"] = options['gpu_id']
 
@@ -1319,18 +1300,19 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
+    from tqdm import tqdm
     with tf.Session(config=config) as sess:
         if continue_training:
             saver.restore(sess, LOAD_PATH)
         else:
             sess.run(tf.global_variables_initializer())
-        for ei in range(NUM_EPOCHS):
-            for pi in range(len(files)):
+        curr_iteration = 0
+        for ei in tqdm(range(NUM_EPOCHS)):
+            for pi in tqdm(range(len(files))):
                 acc_pi, loss_pi = [], []
                 data, labels, centers = data_gen_train.__next__()
                 n_batches = int(np.ceil(float(centers.shape[1]) / BATCH_SIZE))
-                for nb in range(n_batches):
+                for nb in tqdm(range(n_batches)):
                     offset_batch = min(nb * BATCH_SIZE, centers.shape[1] - BATCH_SIZE)
                     data_batch, label_batch = get_patches_3d(
                         data,
@@ -1356,32 +1338,36 @@ def train():
                     acc_pi.append([acc_ft, acc_t1c])
                     loss_pi.append(l)
                     n_pos_sum = np.sum(np.reshape(label_batch[0], (-1, 2)), axis=0)
-                    curr_iteration = (ei + 1) * (pi + 1) * (nb + 1)
                     tb_writer.add_scalar("train-loss", l,  curr_iteration)
                     tb_writer.add_scalar("acc/flair_t2", acc_ft, curr_iteration)
                     tb_writer.add_scalar("acc/t1_t1ce", acc_t1c, curr_iteration)
-                    print(
-                        f"epoch-patient: {ei + 1}, {pi + 1}, iter: {nb + 1}-{n_batches}, p%%: {n_pos_sum[1]/float(np.sum(n_pos_sum))}, loss: {l}, acc_flair_t2: {acc_ft}, acc_t1_t1ce: {acc_t1c}"
+                    curr_iteration += 1
+                    tqdm.write(
+                        f"epoch-patient: {ei + 1}, {pi + 1}, "
+                        f"iter: {nb + 1}-{n_batches}, "
+                        f"p%%: {n_pos_sum[1]/float(np.sum(n_pos_sum)):.4f}, "
+                        f"loss: {l:.4f}, acc_flair_t2: {acc_ft:.2f}, "
+                        f"acc_t1_t1ce: {acc_t1c:.2f}"
                     )
 
                 current_patient_i = (ei + 1) * (pi + 1)
                 tb_writer.add_scalar(
-                    "patient/loss",
+                    f"patient{pi}/loss",
                     np.mean(loss_pi),
                     current_patient_i,
                 )
                 tb_writer.add_scalar(
-                    "patient/acc",
+                    f"patient{pi}/acc",
                     np.mean(acc_pi),
                     current_patient_i,
                 )
-                print(
+                tqdm.write(
                     "patient loss: %.4f, patient acc: %.4f"
                     % (np.mean(loss_pi), np.mean(acc_pi))
                 )
 
             saver.save(sess, SAVE_PATH, global_step=ei)
-            print("Model saved.")
+            tqdm.write("Model saved.")
 
 
 if __name__ == "__main__":
