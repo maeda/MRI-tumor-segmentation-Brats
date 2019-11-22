@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 
 def parse_inputs():
     parser = argparse.ArgumentParser(description='Test different nets with 3D data.')
-    parser.add_argument('-r', '--root-path', dest='root_path', default='/mnt/disk1/dat/lchen63/brain/data/data2')
+    parser.add_argument('-r', '--root-path', dest='root_path', default='./MICCAI_BraTS_2019_Data_Training/HGG')
     parser.add_argument('-m', '--model-path', dest='model_path',
                         default='NoneDense-0')
     parser.add_argument('-ow', '--offset-width', dest='offset_w', type=int, default=12)
@@ -200,7 +200,7 @@ def main():
     test_files = []
     with open('test.txt') as f:
         for line in f:
-            test_files.append(line[:-1])
+            test_files.append(line[:-2])
 
     num_labels = 5
     OFFSET_H = options['offset_h']
@@ -266,7 +266,7 @@ def main():
         saver.restore(sess, SAVE_PATH)
         for i in range(len(test_files)):
             print('predicting %s' % test_files[i])
-            x, x_n, y = data_gen_test.next()
+            x, x_n, y = next(data_gen_test)
             pred = np.zeros([240, 240, 155, 5])
             for hi in range(batches_h):
                 offset_h = min(OFFSET_H * hi, 240 - HSIZE)
@@ -288,7 +288,6 @@ def main():
                                              )
                             pred[offset_ph:offset_ph + PSIZE, offset_pw:offset_pw + PSIZE, offset_pc:offset_pc + PSIZE,
                             :] += np.squeeze(score)
-
             pred = np.argmax(pred, axis=-1)
             pred = pred.astype(int)
             print('calculating dice...')

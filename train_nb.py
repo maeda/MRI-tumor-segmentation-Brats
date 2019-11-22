@@ -975,10 +975,35 @@ BraTS19_TMC_21360_1/
 BraTS19_TMC_27374_1/
 BraTS19_TMC_30014_1/"""
 
-files = files.splitlines()
-for f in range(len(files)):
-    files[f] = files[f].strip(" /")
-# print(files)
+from pathlib import Path
+from typing import List
+
+
+def read_file(file_path: Path) -> str:
+    with open(file_path) as text_file:
+        return text_file.read()
+
+
+def read_multiline(file_path: Path) -> List[str]:
+    """Read, split by LF, and pop final empty line if present."""
+    text = read_file(file_path)
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return lines
+
+
+# files = files.splitlines()
+# for f in range(len(files)):
+#     files[f] = files[f].strip(" /")
+
+files = read_multiline("train.txt")
+val_files = read_multiline("val.txt")
+
+files = [file_name[:-1] for file_name in files]
+
+val_files = [file_name[:-1] for file_name in val_files]
+
 # print(files[2])
 # print(len(files))
 
