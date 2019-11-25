@@ -14,6 +14,10 @@ keras = "*"
 matplotlib = "*"
 scikit-image = "*"
 medpy = "*"
+antspyx = {file = "https://github.com/ANTsX/ANTsPy/releases/download/v0.1.8/antspyx-0.1.8-cp37-cp37m-macosx_10_14_x86_64.whl",sys_platform = "== 'darwin'"}
+antspyx_linux = {file = "https://github.com/ANTsX/ANTsPy/releases/download/v0.1.8/antspy-0.1.7-cp36-cp36m-linux_x86_64.whl",sys_platform = "== 'Linux'"}
+pandas = "*"
+statsmodels = "*"
 
 [requires]
 python_version = "3.7"
