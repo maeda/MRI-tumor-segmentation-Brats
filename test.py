@@ -7,6 +7,8 @@ from keras.backend import learning_phase
 
 import tf_models
 import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from keras.models import Sequential, Model
 from keras.layers import Dense, Conv3D, Dropout, Flatten, Input, concatenate, Reshape, Lambda, Permute
 from keras.layers.core import Dense, Dropout, Activation, Reshape
@@ -35,7 +37,7 @@ import matplotlib.pyplot as plt
 
 def parse_inputs():
     parser = argparse.ArgumentParser(description='Test different nets with 3D data.')
-    parser.add_argument('-r', '--root-path', dest='root_path', default='./MICCAI_BraTS_2019_Data_Training/HGG')
+    parser.add_argument('-r', '--root-path', dest='root_path', default='./data/MICCAI_BraTS_2019_Data_Training/HGG')
     parser.add_argument('-m', '--model-path', dest='model_path',
                         default='NoneDense-0')
     parser.add_argument('-ow', '--offset-width', dest='offset_w', type=int, default=12)
@@ -47,7 +49,7 @@ def parse_inputs():
     parser.add_argument('-ps', '--pred-size', dest='psize', type=int, default=12)
     parser.add_argument('-gpu', '--gpu', dest='gpu', type=str, default='0')
     parser.add_argument('-mn', '--model_name', dest='model_name', type=str, default='dense24')
-    parser.add_argument('-nc', '--correction', dest='correction', type=bool, default=True)
+    parser.add_argument('-nc', '--correction', dest='correction', type=bool, default=False)
 
 
     return vars(parser.parse_args())
@@ -270,13 +272,13 @@ def main():
             pred = np.zeros([240, 240, 155, 5])
             for hi in range(batches_h):
                 offset_h = min(OFFSET_H * hi, 240 - HSIZE)
-                offset_ph = offset_h + OFFSET_PH
+                offset_ph = int(offset_h + OFFSET_PH)
                 for wi in range(batches_w):
                     offset_w = min(OFFSET_W * wi, 240 - WSIZE)
-                    offset_pw = offset_w + OFFSET_PW
+                    offset_pw = int(offset_w + OFFSET_PW)
                     for ci in range(batches_c):
                         offset_c = min(OFFSET_C * ci, 155 - CSIZE)
-                        offset_pc = offset_c + OFFSET_PC
+                        offset_pc = int(offset_c + OFFSET_PC)
                         data = x[offset_h:offset_h + HSIZE, offset_w:offset_w + WSIZE, offset_c:offset_c + CSIZE, :]
                         data_norm = x_n[offset_h:offset_h + HSIZE, offset_w:offset_w + WSIZE, offset_c:offset_c + CSIZE, :]
                         data_norm = np.expand_dims(data_norm, 0)
