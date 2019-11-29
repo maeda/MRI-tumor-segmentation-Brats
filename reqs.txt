@@ -1,0 +1,5 @@
+pip install matplotlib
+pip install https://github.com/ANTsX/ANTsPy/releases/download/v0.1.8/antspyx-0.1.7-cp37-cp37m-linux_x86_64.whl
+pip install pandas
+pip install statsmodels
+
